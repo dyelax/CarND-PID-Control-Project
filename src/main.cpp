@@ -4,6 +4,8 @@
 #include "PID.h"
 #include <math.h>
 
+using namespace std;
+
 // for convenience
 using json = nlohmann::json;
 
@@ -32,10 +34,12 @@ int main()
 {
   uWS::Hub h;
 
-  PID pid;
-  // TODO: Initialize the pid variable.
+  // Initialize the pid variable.
+//  PID pid_steering(true, 0.1, 0, 0);
+  PID pid_steering(false, 1.1, 5.87422, 0);
+//  PID pid_throttle = new PID(true, 1, 1, 1);
 
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  h.onMessage([&pid_steering](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -43,6 +47,7 @@ int main()
     {
       auto s = hasData(std::string(data).substr(0, length));
       if (s != "") {
+        
         auto j = json::parse(s);
         std::string event = j[0].get<std::string>();
         if (event == "telemetry") {
@@ -57,13 +62,17 @@ int main()
           * NOTE: Feel free to play around with the throttle and speed. Maybe use
           * another PID controller to control the speed!
           */
+          steer_value = pid_steering.GetAlpha(cte, -1, 1);
+          if (pid_steering.TWIDDLE) {
+            pid_steering.TwiddleStep(ws);
+          }
           
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+//          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          msgJson["throttle"] = 0.15;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
@@ -110,5 +119,6 @@ int main()
     std::cerr << "Failed to listen to port" << std::endl;
     return -1;
   }
+  
   h.run();
 }

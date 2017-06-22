@@ -1,26 +1,45 @@
 #ifndef PID_H
 #define PID_H
+#include <iostream>
+#include <float.h>
+#include <uWS/uWS.h>
 
 class PID {
 public:
   /*
   * Errors
   */
-  double p_error;
-  double i_error;
-  double d_error;
+  double error_terms [3];
+  
+  double err_squared_sum; // To calculate MSE for Twiddle
+  double err_sum;
+  double err_prev;
+  bool err_prev_initialized;
 
   /*
   * Coefficients
-  */ 
-  double Kp;
-  double Ki;
-  double Kd;
-
+  */
+  double coeffs[3];
+  
+  /*
+   * Twiddle vars
+   */
+  double coeffs_d[3];
+  int step_num;
+  int twiddle_iterations;
+  int twiddling_coeff_i;
+  bool up_run;
+  float best_err;
+  
+  int MAX_STEPS;
+  float THRESHOLD;
+  float SCALING;
+  bool TWIDDLE;
+  
   /*
   * Constructor
   */
-  PID();
+  PID(bool should_twiddle, double Kp, double Kd, double Ki);
 
   /*
   * Destructor.
@@ -28,19 +47,29 @@ public:
   virtual ~PID();
 
   /*
-  * Initialize PID.
-  */
-  void Init(double Kp, double Ki, double Kd);
-
-  /*
   * Update the PID error variables given cross track error.
   */
-  void UpdateError(double cte);
+  void UpdateError(double err);
+  
+  /*
+   * Get the control estimate for an error.
+   */
+  double GetAlpha(double err, double min, double max);
+  
+  /*
+   * Get the mean squared error for a Twiddle iteration.
+   */
+  double GetMSE(int num_steps);
 
   /*
-  * Calculate the total PID error.
-  */
-  double TotalError();
+   * Reset the simulator for another run
+   */
+  void Reset(uWS::WebSocket<uWS::SERVER> ws, bool increment_coeff_i);
+  
+  /*
+   * Optimize parameters with Twiddle
+   */
+  void TwiddleStep(uWS::WebSocket<uWS::SERVER> ws);
 };
 
 #endif /* PID_H */
